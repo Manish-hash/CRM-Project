@@ -18,7 +18,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="mb-4">
 
-                        <img src="{{ asset('storage/' . $product->image) }}" alt="Product Image" height="100" width="100">
+                        <img src="{{ asset('storage/'. $product->logo) }}" alt="Product Image" height="100" width="100"></td>>
                             
                         </div>
                         <div class="mb-4">

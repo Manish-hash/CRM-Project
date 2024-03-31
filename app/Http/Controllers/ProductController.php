@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Models\Product;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 class ProductController extends Controller
@@ -11,7 +12,7 @@ class ProductController extends Controller
     }
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
+            $request->validate([
             'name' => 'required|string|max:255',
             'quantity' => 'required|integer|min:0',
             'manufacturing_price' => 'required|numeric|min:0',
@@ -19,17 +20,28 @@ class ProductController extends Controller
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', 
         ]);
 
-        // Handle file upload 
-        
-        // Create the product
-        if ($request->hasFile('logo')) {
-            $logoPath = $request->file('logo')->store('public/logos');
-            $validatedData['logo'] = $logoPath;
-        }
-        Product::create($validatedData);
+//Create a new product instance
+$product = new Product();
+$product->name =$request->name;
+$product->quantity = $request->quantity;
+$product->manufacturing_price = $request->manufacturing_price;
+$product->selling_price =$request->selling_price;
 
-        // Redirect back with success message
-        return redirect()->route('products.index')->with('success', 'Product added successfully.');
+//Handle image upload if provided
+try {
+    if ($request->hasFile('logo')) {
+        $imagePath = $request->file('logo')->store('logos', 'public');
+        $product->image = $imagePath;
+    }
+} catch (\Exception $e) {
+    Log::error('Error uploading image: ' . $e->getMessage());
+
+}
+
+$product->save();
+
+
+return redirect()->route('products.index')->with('success', 'Product created succcessfully');
     }
 
     public function index(){
@@ -58,7 +70,7 @@ class ProductController extends Controller
         $product = Product::findOrFail($id);
 
         // Validate the incoming request data
-        $validatedData = $request->validate([
+       $request->validate([
             'name' => 'required|string|max:255',
             'quantity' => 'required|integer',
             'manufacturing_price' => 'required|numeric',
@@ -66,21 +78,32 @@ class ProductController extends Controller
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
     
-        // Check if a new image has been uploaded
+       
+        $product = Product::findOrFail($id);
+
+        // Update the product attributes
+        $product->name = $request->input('name');
+        $product->quantity = $request->input('quantity');
+        $product->manufacturing_price = $request->input('manufacturing_price');
+        $product->selling_price = $request->input('selling_price');
+
+        // Handle image update if provided
         if ($request->hasFile('logo')) {
-            // Delete the previous image from storage
-            // Storage::disk('public')->delete($product->logo);
-    
             // Store the new image
-            $logoPath = $request->file('logo')->store('logos', 'public');
-            $validatedData['logo'] = $logoPath;
+            $imagePath = $request->file('logo')->store('logos', 'public');
+            // Delete the old image file if it exists
+            if ($product->logo) {
+                Storage::disk('public')->delete($product->logo);
+            }
+            // Update the image attribute with the new image path
+            $product->logo = $imagePath;
         }
-    
-        // Update the product with the new data
-        $product->update($validatedData);
-    
-        // Redirect back with a success message
-        return redirect()->route('products.index')->with('success', 'Product updated successfully.');
+
+        // Save the updated product
+        $product->save();
+
+        // Redirect the user with a success message
+        return redirect()->route('products.index')->with('success', 'Product updated successfully');
 
     }
 public function delete($id){
